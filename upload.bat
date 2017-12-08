@@ -1,0 +1,1 @@
+pio run -t upload & pio serialports monitor -b 115200 -p com6
