@@ -9,34 +9,46 @@
 #include "SPI.h"
 
 typedef enum {
-    STANDBY = 0x01,             //送受信可能
-    RECEIVE_READY = 0x11,        //受信準備
-    RECEIVE_TRANSFER = 0x12,    //受信中
-    RECEIVE_COMPLETE = 0x13,    //受信完了
-    SEND_STANDBY = 0x20,           //送信準備
-    SEND_READY = 0x21,           //送信準備
-    SEND_TRANSFER = 0x22,       //送信中
-    SEND_COMPLETE = 0x23,       //送信完了
+    STANDBY = '\1',             //送受信可能
+    RECEIVE_READY = '\2',        //受信準備
+    RECEIVE_NEGOTIATION_UINT8 = '\15',      //受信種別決定
+    RECEIVE_NEGOTIATION_UINT16 = '\16',      //受信種別決定
+    RECEIVE_NEGOTIATION_CHAR = '\17',      //受信種別決定
+    RECEIVE_TRANSFER = '\6',    //受信中
+    RECEIVE_COMPLETE = '\77',    //受信完了
+    SEND_STANDBY = '\10',           //送信準備
+    SEND_READY = '\11',           //送信準備
+    SEND_TRANSFER = '\12',       //送信中
+    SEND_COMPLETE = '\13',       //送信完了
 } STATUS;
 
 typedef enum {
     ZERO = 0,                   //ゼロデータ
-    SUCCESS = 0x01,             //成功
-    ERROR = 0x02,               //失敗
+    SUCCESS = '\20',             //成功
+    ERROR = '\21',               //失敗
 } RESPONSE;
 
 struct {
     STATUS status;
 } status_t;
 
+typedef enum {
+    UINT8 = 0x01,
+    UINT16 = 0x02,
+    CHAR = 0x03,
+} type_t;
+
 struct {
-    char buf[1024];
+    type_t type;
+    uint8_t buf[1024];
     volatile byte pos;
     volatile byte send_pos;
     volatile boolean process_it;
 } data_t;
 
+
 class SPISlave {
+
 public:
     void begin();
 
@@ -44,7 +56,7 @@ public:
 
     void send(const char *message);
 
-    void SLAVE_CALLBACK(char *message);
+    void SLAVE_CALLBACK(uint8_t *message, type_t type, size_t length);
 
 private:
 };

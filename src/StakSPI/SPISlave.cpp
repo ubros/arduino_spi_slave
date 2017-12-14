@@ -30,13 +30,28 @@ void SPISlave::handler() {
             SPDR = SUCCESS;
             data_t.process_it = false;
             break;
+        case RECEIVE_NEGOTIATION_UINT8:
+            SPDR = SUCCESS;
+            data_t.type = UINT8;
+            data_t.process_it = false;
+            break;
+        case RECEIVE_NEGOTIATION_UINT16:
+            SPDR = SUCCESS;
+            data_t.type = UINT16;
+            data_t.process_it = false;
+            break;
+        case RECEIVE_NEGOTIATION_CHAR:
+            SPDR = SUCCESS;
+            data_t.type = CHAR;
+            data_t.process_it = false;
+            break;
         case RECEIVE_COMPLETE:
             SPDR = SUCCESS;
             status_t.status = STANDBY;
             data_t.buf[data_t.pos] = 0;
             data_t.pos = 0;
             data_t.process_it = false;
-            SLAVE_CALLBACK(data_t.buf);
+            SLAVE_CALLBACK(data_t.buf, data_t.type, sizeof(data_t.buf));
             break;
         case SEND_READY:
             SPDR = SUCCESS;
@@ -89,7 +104,27 @@ ISR(SPI_STC_vect) {
 
     switch (c) {
         case RECEIVE_READY:
+            if (status_t.status != STANDBY)
+                break;
             status_t.status = RECEIVE_READY;
+            data_t.process_it = true;
+            return;
+        case RECEIVE_NEGOTIATION_UINT8:
+            if (status_t.status != RECEIVE_READY)
+                break;
+            status_t.status = RECEIVE_NEGOTIATION_UINT8;
+            data_t.process_it = true;
+            return;
+        case RECEIVE_NEGOTIATION_UINT16:
+            if (status_t.status != RECEIVE_READY)
+                break;
+            status_t.status = RECEIVE_NEGOTIATION_UINT16;
+            data_t.process_it = true;
+            return;
+        case RECEIVE_NEGOTIATION_CHAR:
+            if (status_t.status != RECEIVE_READY)
+                break;
+            status_t.status = RECEIVE_NEGOTIATION_CHAR;
             data_t.process_it = true;
             return;
         case RECEIVE_COMPLETE:
@@ -117,7 +152,9 @@ ISR(SPI_STC_vect) {
     }
 
     switch (status_t.status) {
-        case RECEIVE_READY:
+        case RECEIVE_NEGOTIATION_UINT8:
+        case RECEIVE_NEGOTIATION_UINT16:
+        case RECEIVE_NEGOTIATION_CHAR:
         case RECEIVE_TRANSFER:
             status_t.status = RECEIVE_TRANSFER;
             data_t.buf[data_t.pos++] = c;
