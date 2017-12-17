@@ -7,16 +7,18 @@
 
 #include "Arduino.h"
 #include "SPI.h"
+#include "global.h"
+
 
 typedef enum {
-    STANDBY = 0x01,             //送受信可能
-    RECEIVE_READY = 0x11,        //受信準備
-    RECEIVE_TRANSFER = 0x12,    //受信中
-    RECEIVE_COMPLETE = 0x13,    //受信完了
-    SEND_STANDBY = 0x20,           //送信準備
-    SEND_READY = 0x21,           //送信準備
-    SEND_TRANSFER = 0x22,       //送信中
-    SEND_COMPLETE = 0x23,       //送信完了
+    STANDBY = 128,             //送受信可能
+    RECEIVE_READY = 129,        //受信準備
+    RECEIVE_TRANSFER = 130,    //受信中
+    RECEIVE_COMPLETE = 131,    //受信完了
+    SEND_STANDBY = 132,           //送信準備
+    SEND_READY = 133,           //送信準備
+    SEND_TRANSFER = 134,       //送信中
+    SEND_COMPLETE = 135,       //送信完了
 } STATUS;
 
 typedef enum {
@@ -30,8 +32,9 @@ struct {
 } status_t;
 
 struct {
-    char buf[1024];
-    volatile byte pos;
+    universal_t buf[512];
+    int pos;
+    boolean bit_order;
     volatile byte send_pos;
     volatile boolean process_it;
 } data_t;
@@ -44,7 +47,7 @@ public:
 
     void send(const char *message);
 
-    void SLAVE_CALLBACK(char *message);
+    void SLAVE_CALLBACK(universal_t *message, size_t length);
 
 private:
 };

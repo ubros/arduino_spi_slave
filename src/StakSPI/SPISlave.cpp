@@ -11,11 +11,12 @@
 void SPISlave::begin() {
     Serial.println("Slave init");
     pinMode(MISO, OUTPUT);
-    SPI.setClockDivider(SPI_CLOCK_DIV4);
+    SPI.setClockDivider(SPI_CLOCK_DIV128);
     SPCR |= _BV(SPE);
     SPI.attachInterrupt();
     status_t.status = STANDBY;
 
+    data_t.bit_order = false;
     data_t.pos = 0;
     data_t.send_pos = 0;
     data_t.process_it = false;
@@ -28,15 +29,17 @@ void SPISlave::handler() {
     switch (status_t.status) {
         case RECEIVE_READY:
             SPDR = SUCCESS;
+            data_t.pos = 0;
             data_t.process_it = false;
             break;
         case RECEIVE_COMPLETE:
             SPDR = SUCCESS;
             status_t.status = STANDBY;
-            data_t.buf[data_t.pos] = 0;
-            data_t.pos = 0;
+//            data_t.buf[data_t.pos] = 0;
+            Serial.println(data_t.pos);
+            SLAVE_CALLBACK(data_t.buf, (size_t) data_t.pos);
+            data_t.bit_order = false;
             data_t.process_it = false;
-            SLAVE_CALLBACK(data_t.buf);
             break;
         case SEND_READY:
             SPDR = SUCCESS;
@@ -49,13 +52,13 @@ void SPISlave::handler() {
                 data_t.process_it = false;
                 return;
             }
-            SPDR = data_t.buf[data_t.send_pos++];
+//            SPDR = data_t.buf[data_t.send_pos++];
             data_t.process_it = false;
             break;
         case SEND_COMPLETE:
             SPDR = SUCCESS;
             data_t.pos = 0;
-            data_t.buf[data_t.pos] = 0;
+//            data_t.buf[data_t.pos] = 0;
             status_t.status = STANDBY;
             data_t.process_it = false;
             break;
@@ -65,13 +68,13 @@ void SPISlave::handler() {
 }
 
 void SPISlave::send(const char *message) {
-    data_t.pos = 0;
-    data_t.buf[data_t.pos] = 0;
-    data_t.process_it = false;
-    for (; char c = *message; message++) {
-        data_t.buf[data_t.pos++] = c;
-    }
-    status_t.status = SEND_STANDBY;
+//    data_t.pos = 0;
+//    data_t.buf[data_t.pos] = 0;
+//    data_t.process_it = false;
+//    for (; char c = *message; message++) {
+//        data_t.buf[data_t.pos++] = c;
+//    }
+//    status_t.status = SEND_STANDBY;
 }
 
 /**************************************************************
@@ -81,8 +84,6 @@ void SPISlave::send(const char *message) {
 /**************************************************************
  * callback method
  **************************************************************/
-
-
 
 ISR(SPI_STC_vect) {
     byte c = SPDR;
@@ -111,7 +112,8 @@ ISR(SPI_STC_vect) {
             data_t.process_it = true;
             break;
         case ZERO:
-            return;
+            if (status_t.status != RECEIVE_TRANSFER)
+                return;
         default:
             break;
     }
@@ -120,7 +122,12 @@ ISR(SPI_STC_vect) {
         case RECEIVE_READY:
         case RECEIVE_TRANSFER:
             status_t.status = RECEIVE_TRANSFER;
-            data_t.buf[data_t.pos++] = c;
+            data_t.buf[data_t.pos].bit8[data_t.bit_order] = c;
+            if (data_t.bit_order) {
+                data_t.pos++;
+            }
+            data_t.bit_order = !data_t.bit_order;
+
             return;
         default:
             break;
